@@ -44,6 +44,11 @@ class OrderController extends Controller
             'products.*.quantity' => 'required|integer|min:1',
         ]);
 
+        // Extract city from shipping address if not provided
+        $addressParts = explode(',', $request->shipping_address);
+        $city = !empty($addressParts[1]) ? trim($addressParts[1]) : 'Unknown City';
+        $postalCode = '00000'; // Default postal code
+
         $order = Order::create([
             'user_id' => Auth::user()->id,
             'order_number' => 'ORD-' . strtoupper(Str::random(8)),
@@ -51,6 +56,8 @@ class OrderController extends Controller
             'customer_email' => $request->customer_email,
             'customer_phone' => $request->customer_phone,
             'shipping_address' => $request->shipping_address,
+            'shipping_city' => $city,
+            'shipping_postal_code' => $postalCode,
             'notes' => $request->notes,
             'total_amount' => 0,
             'status' => 'pending',
