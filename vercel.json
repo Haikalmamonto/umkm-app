@@ -1,22 +1,15 @@
 {
   "version": 2,
-  "name": "umkm-app",
-  "framework": "laravel",
-  "settings": {
-    "buildCommand": "composer install && npm install && npm run build && php artisan config:cache",
-    "devCommand": "php artisan serve",
-    "installCommand": "composer install && npm install",
-    "outputDirectory": "/"
-  },
+  "builds": [
+    {
+      "src": "public/index.php",
+      "use": "@vercel/php@latest"
+    }
+  ],
   "routes": [
     {
       "src": "/(.*)",
       "dest": "public/index.php"
     }
-  ],
-  "env": {
-    "APP_ENV": "production",
-    "APP_DEBUG": "false",
-    "DB_CONNECTION": "sqlite"
-  }
+  ]
 }
