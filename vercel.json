@@ -1,6 +1,17 @@
 {
   "version": 2,
-  "framework": "laravel",
+  "builds": [
+    {
+      "src": "public/index.php",
+      "use": "@vercel/phphandler"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/public/index.php"
+    }
+  ],
   "env": {
     "APP_ENV": "production",
     "APP_DEBUG": "false",
