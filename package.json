@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build && if [ -d 'public/build' ]; then cp -r public/build dist; else mkdir -p dist; fi"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
