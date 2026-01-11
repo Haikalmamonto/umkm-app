@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
@@ -46,12 +45,19 @@ require __DIR__.'/../vendor/autoload.php';
 
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-$kernel = $app->make(Kernel::class);
-
-$response = $kernel->handle(
-    $request = Request::capture()
+// For Vercel compatibility - handle static assets first
+$uri = urldecode(
+    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
 );
 
-$response->send();
+// Handle static assets
+if ($uri !== '/' && file_exists(__DIR__.$uri)) {
+    return false;
+}
 
+// Handle all other requests through Laravel
+$request = Request::capture();
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+$response = $kernel->handle($request);
+$response->send();
 $kernel->terminate($request, $response);

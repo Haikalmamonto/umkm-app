@@ -1,0 +1,12 @@
+{
+  "public": {
+    "/build/*": {
+      "folder": "public/build",
+      "cache": "max-age=31536000"
+    },
+    "/assets/*": {
+      "folder": "public/assets",
+      "cache": "max-age=31536000"
+    }
+  }
+}
