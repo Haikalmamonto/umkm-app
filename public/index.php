@@ -70,6 +70,35 @@ if (!is_dir(__DIR__.'/../bootstrap/cache')) {
 
 /*
 |--------------------------------------------------------------------------
+| Set Environment Variables for Vercel
+|--------------------------------------------------------------------------
+|
+| Make sure Laravel can read environment variables in the Vercel environment.
+|
+*/
+
+// Ensure environment variables are properly set for Vercel
+if (isset($_ENV['VERCEL'])) {
+    // Set environment variables that Laravel needs
+    if (!isset($_ENV['APP_KEY']) && isset($_SERVER['APP_KEY'])) {
+        $_ENV['APP_KEY'] = $_SERVER['APP_KEY'];
+    }
+    if (!isset($_ENV['APP_ENV']) && isset($_SERVER['APP_ENV'])) {
+        $_ENV['APP_ENV'] = $_SERVER['APP_ENV'];
+    }
+    if (!isset($_ENV['APP_DEBUG']) && isset($_SERVER['APP_DEBUG'])) {
+        $_ENV['APP_DEBUG'] = $_SERVER['APP_DEBUG'];
+    }
+    if (!isset($_ENV['DB_CONNECTION']) && isset($_SERVER['DB_CONNECTION'])) {
+        $_ENV['DB_CONNECTION'] = $_SERVER['DB_CONNECTION'];
+    }
+    if (!isset($_ENV['DB_DATABASE']) && isset($_SERVER['DB_DATABASE'])) {
+        $_ENV['DB_DATABASE'] = $_SERVER['DB_DATABASE'];
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
 | Run The Application
 |--------------------------------------------------------------------------
 |
