@@ -1,0 +1,15 @@
+{
+    "name": "vercel/laravel-vercel",
+    "description": "Laravel application configured for Vercel deployment",
+    "type": "project",
+    "require": {
+        "php": "^8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    }
+}

@@ -4,9 +4,33 @@
  * Vercel + Laravel Entry Point
  * 
  * This file serves as the entry point for Vercel deployments.
- * Vercel will automatically detect this as a PHP application
- * and route all requests through Laravel.
  */
+
+// For Vercel, ensure that the public directory is properly served
+// and that the build directory is available in the expected location
+if (isset($_ENV['VERCEL'])) {
+    // Ensure public directory exists and is accessible
+    if (!file_exists(__DIR__ . '/../public')) {
+        mkdir(__DIR__ . '/../public', 0755, true);
+    }
+    
+    // Ensure the build directory exists in public
+    if (!file_exists(__DIR__ . '/../public/build')) {
+        mkdir(__DIR__ . '/../public/build', 0755, true);
+    }
+    
+    // Create a fallback dist directory that Vercel looks for
+    if (!file_exists(__DIR__ . '/../dist')) {
+        // Create symlink or copy if possible
+        if (function_exists('symlink') && is_writable(__DIR__ . '/..')) {
+            @symlink(__DIR__ . '/../public/build', __DIR__ . '/../dist');
+        } else {
+            // Create a simple dist directory with a placeholder if symlink fails
+            mkdir(__DIR__ . '/../dist', 0755, true);
+            file_put_contents(__DIR__ . '/../dist/.gitkeep', '');
+        }
+    }
+}
 
 // Ensure the application can write to necessary directories
 if (!is_dir(__DIR__.'/../bootstrap/cache')) {
@@ -23,6 +47,11 @@ if (isset($_ENV['VERCEL'])) {
     putenv('APP_DEBUG=false');
     $_ENV['APP_DEBUG'] = 'false';
     $_SERVER['APP_DEBUG'] = 'false';
+    
+    // Ensure database settings are appropriate for Vercel
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
 }
 
 use Illuminate\Http\Request;
