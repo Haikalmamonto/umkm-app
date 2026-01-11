@@ -1,8 +1,10 @@
 <?php
 
-// Set error reporting for debugging in development
+// Enable error logging for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Turn off in production
+ini_set('display_errors', 0); // Tetap matikan di production
+ini_set('log_errors', 1);
+ini_set('error_log', dirname(__DIR__) . '/storage/logs/error.log');
 
 use Illuminate\Http\Request;
 
@@ -38,8 +40,8 @@ if (!is_dir(__DIR__.'/../bootstrap/cache')) {
 $dbPath = __DIR__ . '/../database/database.sqlite';
 if (!file_exists($dbPath)) {
     // Create the database file
-    $db = new PDO("sqlite:$dbPath");
-    $db = null; // Close connection
+    touch($dbPath);
+    chmod($dbPath, 0664);
 }
 
 // Check maintenance mode
@@ -70,56 +72,66 @@ if (isset($_ENV['VERCEL'])) {
     }
 }
 
-// Create application
-$app = require_once __DIR__.'/../bootstrap/app.php';
+try {
+    // Create application
+    $app = require_once __DIR__.'/../bootstrap/app.php';
 
-if (isset($_ENV['VERCEL'])) {
-    $app->useEnvironmentPath(__DIR__.'/..');
-    $app->detectEnvironment(function () {
-        return 'production';
-    });
-}
-
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-
-// Handle static assets first
-$uri = urldecode(
-    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
-);
-
-// Serve static files directly if they exist
-if ($uri !== '/' && $uri !== '/index.php' && file_exists(__DIR__.'/../public'.$uri)) {
-    // For CSS, JS, images and other static files
-    $path = __DIR__.'/../public'.$uri;
-    $ext = pathinfo($path, PATHINFO_EXTENSION);
-    
-    // Set appropriate content type
-    $contentTypes = [
-        'css' => 'text/css',
-        'js' => 'application/javascript',
-        'json' => 'application/json',
-        'png' => 'image/png',
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif',
-        'svg' => 'image/svg+xml',
-        'ico' => 'image/x-icon',
-        'woff' => 'font/woff',
-        'woff2' => 'font/woff2',
-        'ttf' => 'font/ttf',
-        'eot' => 'application/vnd.ms-fontobject'
-    ];
-    
-    if (isset($contentTypes[$ext])) {
-        header('Content-Type: ' . $contentTypes[$ext]);
+    if (isset($_ENV['VERCEL'])) {
+        $app->useEnvironmentPath(__DIR__.'/..');
+        $app->detectEnvironment(function () {
+            return 'production';
+        });
     }
-    
-    readfile($path);
-    return;
-}
 
-// Capture and handle request
-$request = Request::capture();
-$response = $kernel->handle($request);
-$response->send();
-$kernel->terminate($request, $response);
+    $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+
+    // Handle static assets first
+    $uri = urldecode(
+        parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
+    );
+
+    // Serve static files directly if they exist
+    if ($uri !== '/' && $uri !== '/index.php' && file_exists(__DIR__.'/../public'.$uri)) {
+        // For CSS, JS, images and other static files
+        $path = __DIR__.'/../public'.$uri;
+        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        
+        // Set appropriate content type
+        $contentTypes = [
+            'css' => 'text/css',
+            'js' => 'application/javascript',
+            'json' => 'application/json',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+            'ico' => 'image/x-icon',
+            'woff' => 'font/woff',
+            'woff2' => 'font/woff2',
+            'ttf' => 'font/ttf',
+            'eot' => 'application/vnd.ms-fontobject'
+        ];
+        
+        if (isset($contentTypes[$ext])) {
+            header('Content-Type: ' . $contentTypes[$ext]);
+        }
+        
+        readfile($path);
+        return;
+    }
+
+    // Capture and handle request
+    $request = Request::capture();
+    $response = $kernel->handle($request);
+    $response->send();
+    $kernel->terminate($request, $response);
+} catch (Exception $e) {
+    // Log the actual error for debugging
+    error_log('Laravel Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+    
+    // Return a simple error response
+    http_response_code(500);
+    echo "Internal Server Error";
+    exit;
+}
