@@ -30,6 +30,14 @@ if (!is_dir(__DIR__.'/../bootstrap/cache')) {
     mkdir(__DIR__.'/../bootstrap/cache', 0755, true);
 }
 
+// Ensure SQLite database exists
+$dbPath = __DIR__ . '/../database/database.sqlite';
+if (!file_exists($dbPath)) {
+    // Create the database file
+    $db = new PDO("sqlite:$dbPath");
+    $db = null; // Close connection
+}
+
 // Check maintenance mode
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
