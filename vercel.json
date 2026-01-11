@@ -15,5 +15,11 @@
       "src": "/(.*)",
       "dest": "/public/index.php"
     }
-  ]
+  ],
+  "env": {
+    "APP_ENV": "production",
+    "APP_DEBUG": "false",
+    "DB_CONNECTION": "sqlite",
+    "DB_DATABASE": "./database/database.sqlite"
+  }
 }

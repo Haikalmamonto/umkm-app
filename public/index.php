@@ -34,6 +34,42 @@ require __DIR__.'/../vendor/autoload.php';
 
 /*
 |--------------------------------------------------------------------------
+| Create Directories If They Don't Exist
+|--------------------------------------------------------------------------
+|
+| Ensure that necessary directories exist and are writable in the Vercel 
+| environment.
+|
+*/
+
+// Create necessary directories for Laravel to function properly
+if (!is_dir(__DIR__.'/../storage')) {
+    mkdir(__DIR__.'/../storage', 0755, true);
+}
+if (!is_dir(__DIR__.'/../storage/logs')) {
+    mkdir(__DIR__.'/../storage/logs', 0755, true);
+}
+if (!is_dir(__DIR__.'/../storage/framework')) {
+    mkdir(__DIR__.'/../storage/framework', 0755, true);
+}
+if (!is_dir(__DIR__.'/../storage/framework/cache')) {
+    mkdir(__DIR__.'/../storage/framework/cache', 0755, true);
+}
+if (!is_dir(__DIR__.'/../storage/framework/sessions')) {
+    mkdir(__DIR__.'/../storage/framework/sessions', 0755, true);
+}
+if (!is_dir(__DIR__.'/../storage/framework/views')) {
+    mkdir(__DIR__.'/../storage/framework/views', 0755, true);
+}
+if (!is_dir(__DIR__.'/../storage/framework/testing')) {
+    mkdir(__DIR__.'/../storage/framework/testing', 0755, true);
+}
+if (!is_dir(__DIR__.'/../bootstrap/cache')) {
+    mkdir(__DIR__.'/../bootstrap/cache', 0755, true);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Run The Application
 |--------------------------------------------------------------------------
 |
@@ -45,19 +81,27 @@ require __DIR__.'/../vendor/autoload.php';
 
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-// For Vercel compatibility - handle static assets first
+// For Vercel environment, ensure production mode
+if (isset($_ENV['VERCEL'])) {
+    $app->useEnvironmentPath(__DIR__.'/..');
+    $app->detectEnvironment(function () {
+        return 'production';
+    });
+}
+
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+
+// Handle static assets first
 $uri = urldecode(
     parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
 );
 
-// Handle static assets
+// Serve static files directly if they exist
 if ($uri !== '/' && file_exists(__DIR__.$uri)) {
     return false;
 }
 
-// Handle all other requests through Laravel
 $request = Request::capture();
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $response = $kernel->handle($request);
 $response->send();
 $kernel->terminate($request, $response);
