@@ -7,8 +7,16 @@
   },
   "routes": [
     {
+      "src": "/(css|js|images|img|fonts|assets)/(.*)",
+      "dest": "/public/$1/$2"
+    },
+    {
       "src": "/build/(.*)",
       "dest": "/public/build/$1"
+    },
+    {
+      "src": "/storage/(.*)",
+      "dest": "/public/storage/$1"
     },
     {
       "src": "/(.*)",
