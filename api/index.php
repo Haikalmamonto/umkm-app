@@ -1,111 +1,75 @@
 <?php
 
-// Enable error logging for debugging
+// Set error reporting untuk debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Tetap matikan di production
+ini_set('display_errors', 0); // Matikan di production
 ini_set('log_errors', 1);
-ini_set('error_log', dirname(__DIR__) . '/storage/logs/error.log');
+ini_set('error_log', 'php://stderr'); // Log ke stderr agar bisa dilihat di Vercel
 
 use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// For Vercel, ensure directories exist
-if (!is_dir(__DIR__.'/../storage')) {
-    mkdir(__DIR__.'/../storage', 0755, true);
-}
-if (!is_dir(__DIR__.'/../storage/logs')) {
-    mkdir(__DIR__.'/../storage/logs', 0755, true);
-}
-if (!is_dir(__DIR__.'/../storage/framework')) {
-    mkdir(__DIR__.'/../storage/framework', 0755, true);
-}
-if (!is_dir(__DIR__.'/../storage/framework/cache')) {
-    mkdir(__DIR__.'/../storage/framework/cache', 0755, true);
-}
-if (!is_dir(__DIR__.'/../storage/framework/sessions')) {
-    mkdir(__DIR__.'/../storage/framework/sessions', 0755, true);
-}
-if (!is_dir(__DIR__.'/../storage/framework/views')) {
-    mkdir(__DIR__.'/../storage/framework/views', 0755, true);
-}
-if (!is_dir(__DIR__.'/../storage/framework/testing')) {
-    mkdir(__DIR__.'/../storage/framework/testing', 0755, true);
-}
-if (!is_dir(__DIR__.'/../bootstrap/cache')) {
-    mkdir(__DIR__.'/../bootstrap/cache', 0755, true);
+// Cek apakah direktori yang diperlukan ada
+$required_dirs = [
+    __DIR__ . '/../storage',
+    __DIR__ . '/../storage/logs',
+    __DIR__ . '/../storage/framework',
+    __DIR__ . '/../storage/framework/cache',
+    __DIR__ . '/../storage/framework/sessions',
+    __DIR__ . '/../storage/framework/views',
+    __DIR__ . '/../bootstrap/cache'
+];
+
+foreach ($required_dirs as $dir) {
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
 }
 
-// Ensure SQLite database exists in a writable location
+// Buat file database sederhana jika tidak ada
 $dbPath = '/tmp/database.sqlite';
 if (!file_exists($dbPath)) {
-    // Create the database file
     touch($dbPath);
     chmod($dbPath, 0664);
 }
 
-// Also ensure local database exists as backup
-$localDbPath = __DIR__ . '/../database/database.sqlite';
-if (!file_exists($localDbPath)) {
-    // Create the database file
-    touch($localDbPath);
-    chmod($localDbPath, 0664);
+// Cek maintenance mode
+$maintenance_file = __DIR__ . '/../storage/framework/maintenance.php';
+if (file_exists($maintenance_file)) {
+    require $maintenance_file;
+    exit;
 }
 
-// Check maintenance mode
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
-}
-
-// Register autoloader
-require __DIR__.'/../vendor/autoload.php';
-
-// For Vercel environment, ensure production mode
-if (isset($_ENV['VERCEL'])) {
-    // Set environment variables
-    if (!isset($_ENV['APP_KEY']) && isset($_SERVER['APP_KEY'])) {
-        $_ENV['APP_KEY'] = $_SERVER['APP_KEY'];
-    }
-    if (!isset($_ENV['APP_ENV']) && isset($_SERVER['APP_ENV'])) {
-        $_ENV['APP_ENV'] = $_SERVER['APP_ENV'];
-    }
-    if (!isset($_ENV['APP_DEBUG']) && isset($_SERVER['APP_DEBUG'])) {
-        $_ENV['APP_DEBUG'] = $_SERVER['APP_DEBUG'];
-    }
-    if (!isset($_ENV['DB_CONNECTION']) && isset($_SERVER['DB_CONNECTION'])) {
-        $_ENV['DB_CONNECTION'] = $_SERVER['DB_CONNECTION'];
-    }
-    if (!isset($_ENV['DB_DATABASE']) && isset($_SERVER['DB_DATABASE'])) {
-        $_ENV['DB_DATABASE'] = $_SERVER['DB_DATABASE'];
-    }
-}
-
+// Coba load aplikasi Laravel
 try {
-    // Create application
-    $app = require_once __DIR__.'/../bootstrap/app.php';
+    // Register autoloader
+    require_once __DIR__ . '/../vendor/autoload.php';
 
+    // Set environment variables untuk Vercel
     if (isset($_ENV['VERCEL'])) {
-        $app->useEnvironmentPath(__DIR__.'/..');
-        $app->detectEnvironment(function () {
-            return 'production';
-        });
+        $_ENV['APP_ENV'] = 'production';
+        $_ENV['APP_DEBUG'] = 'false';
+        $_ENV['APP_KEY'] = 'base64:Hb1HJW1KSA5L2jP6OR+YZ0R7twt6jZFvH10QGQ8JeYE=';
+        $_ENV['DB_CONNECTION'] = 'sqlite';
+        $_ENV['DB_DATABASE'] = $dbPath;
     }
 
+    // Buat aplikasi
+    $app = require_once __DIR__ . '/../bootstrap/app.php';
+
+    // Jalankan kernel
     $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
-    // Handle static assets first
-    $uri = urldecode(
-        parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
-    );
+    // Tangani permintaan statis dulu
+    $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '');
 
-    // Serve static files directly if they exist
-    if ($uri !== '/' && $uri !== '/index.php' && file_exists(__DIR__.'/../public'.$uri)) {
-        // For CSS, JS, images and other static files
-        $path = __DIR__.'/../public'.$uri;
-        $ext = pathinfo($path, PATHINFO_EXTENSION);
+    // Jika permintaan untuk file statis, kirim langsung
+    $static_path = __DIR__ . '/../public' . $uri;
+    if ($uri !== '/' && $uri !== '/index.php' && file_exists($static_path) && !is_dir($static_path)) {
+        $ext = strtolower(pathinfo($static_path, PATHINFO_EXTENSION));
         
-        // Set appropriate content type
-        $contentTypes = [
+        $mime_types = [
             'css' => 'text/css',
             'js' => 'application/javascript',
             'json' => 'application/json',
@@ -120,26 +84,44 @@ try {
             'ttf' => 'font/ttf',
             'eot' => 'application/vnd.ms-fontobject'
         ];
-        
-        if (isset($contentTypes[$ext])) {
-            header('Content-Type: ' . $contentTypes[$ext]);
+
+        if (isset($mime_types[$ext])) {
+            header('Content-Type: ' . $mime_types[$ext]);
         }
         
-        readfile($path);
-        return;
+        readfile($static_path);
+        exit;
     }
 
-    // Capture and handle request
+    // Tangani permintaan aplikasi
     $request = Request::capture();
     $response = $kernel->handle($request);
     $response->send();
     $kernel->terminate($request, $response);
+
 } catch (Exception $e) {
-    // Log the actual error for debugging
+    // Log error
     error_log('Laravel Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
     
-    // Return a simple error response
+    // Kirim error sederhana
     http_response_code(500);
-    echo "Internal Server Error";
+    echo '<!DOCTYPE html>
+<html>
+<head>
+    <title>500 Internal Server Error</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .error-container { max-width: 600px; margin: 0 auto; text-align: center; }
+        h1 { color: #d00; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>500 Internal Server Error</h1>
+        <p>Sorry, something went wrong.</p>
+        <p>Please try again later.</p>
+    </div>
+</body>
+</html>';
     exit;
 }
